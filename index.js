@@ -29,6 +29,10 @@ const insertQuery = db.prepare("INSERT INTO videoData "
 
 let count = db.prepare("SELECT count(*) as progress from videoData").get().progress;
 
+let videosFetchedInLast30Seconds = 0;
+let lastResetTime = Date.now();
+let lastSpeed = "N/A";
+
 async function process() {
     let rows = db.prepare(`SELECT sponsorTimes.videoID, MAX(sponsorTimes.views) from sponsorTimes LEFT JOIN videoData ON 
                 sponsorTimes.videoID=videoData.videoID WHERE videoData.videoID IS NULL GROUP BY sponsorTimes.videoID ORDER BY sponsorTimes.views DESC`).all();
@@ -38,6 +42,15 @@ async function process() {
     let runFetchingLoop = async (invidiousURL) => {
         while (i < rows.length) {
             await fetchFromAPI(rows[i++].videoID, invidiousURL);
+
+            videosFetchedInLast30Seconds++;
+
+            const now = Date.now();
+            if (now - lastResetTime > 30000) {
+                lastResetTime = now;
+                lastSpeed = (videosFetchedInLast30Seconds / 30.0).toFixed(2);
+                videosFetchedInLast30Seconds = 0;
+            }
         }
     };
 
@@ -58,7 +71,7 @@ async function fetchFromAPI(videoID, invidiousURL) {
                 , videoData.author, videoData.authorUrl, videoData.authorThumbnails.find(e => e.width === 512).url
                 , videoData.lengthSeconds);
 
-            console.log("added " + videoID + " (" + videoData.author + ")" + "\t\t" + "Progress: " + ++count + "\t\tUsing " + invidiousURL);
+            console.log("added " + videoID + " (" + videoData.author + ")" + "\t\t" + "Progress: " + ++count + " (" + lastSpeed + " videos/sec)" + "\t\tUsing " + invidiousURL);
         } else {
             console.error("Recieved code " + videoDataReq.status + " for video " + videoID + "\t\tUsing " + invidiousURL)
         }
