@@ -20,12 +20,13 @@ CREATE TABLE IF NOT EXISTS "videoData" (
 	"author"	TEXT,
 	"authorURL"	TEXT,
 	"channelThumbnail"	TEXT,
-	"lengthSeconds"	INTEGER
+    "lengthSeconds"	INTEGER,
+    "category" TEXT
 );
 `);
 
 const insertQuery = db.prepare("INSERT INTO videoData "
-+ "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
++ "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
 let count = db.prepare("SELECT count(*) as progress from videoData").get().progress;
 
@@ -59,19 +60,21 @@ async function process() {
     }
 }
 
+[].sort((a, b) => a.width - b.width)
+
 async function fetchFromAPI(videoID, invidiousURL) {
     try {
-        const videoDataReq = await fetch(invidiousURL + "/api/v1/videos/" + videoID + "?fields=title,videoThumbnails,published,publishedText,viewCount,likeCount,author,authorUrl,authorThumbnails,lengthSeconds");
+        const videoDataReq = await fetch(invidiousURL + "/api/v1/videos/" + videoID + "?fields=title,videoThumbnails,published,publishedText,viewCount,likeCount,author,authorUrl,authorThumbnails,lengthSeconds,genre");
 
         if (videoDataReq.ok) {
             const videoData = await videoDataReq.json();
 
             insertQuery.run(videoID, videoData.title, videoData.videoThumbnails.find(e => e.quality === "maxresdefault").url
                 , videoData.published, videoData.publishedText, videoData.viewCount, videoData.likeCount
-                , videoData.author, videoData.authorUrl, videoData.authorThumbnails.find(e => e.width === 512).url
-                , videoData.lengthSeconds);
+                , videoData.author, videoData.authorUrl, videoData.authorThumbnails.sort((a, b) => a.width - b.width)[0].url
+                , videoData.lengthSeconds, videoData.genre);
 
-            console.log("added " + videoID + " (" + videoData.author + ")" + "\t\t" + "Progress: " + ++count + " (" + lastSpeed + " videos/sec)" + "\t\tUsing " + invidiousURL);
+            console.log("added "+ videoID + " (" + videoData.author + ")" + "\t\t" + "Progress: " + ++count + " (" + lastSpeed + " videos/sec)" + "\t\tUsing " + invidiousURL);
         } else {
             console.error("Recieved code " + videoDataReq.status + " for video " + videoID + "\t\tUsing " + invidiousURL)
         }
