@@ -36,7 +36,8 @@ let lastSpeed = "N/A";
 
 async function process() {
     let rows = db.prepare(`SELECT sponsorTimes.videoID, MAX(sponsorTimes.views) from sponsorTimes LEFT JOIN videoData ON 
-                sponsorTimes.videoID=videoData.videoID WHERE videoData.videoID IS NULL GROUP BY sponsorTimes.videoID ORDER BY sponsorTimes.views DESC`).all();
+                sponsorTimes.videoID=videoData.videoID WHERE videoData.videoID IS NULL AND sponsorTimes.category = 'sponsor'
+                    GROUP BY sponsorTimes.videoID ORDER BY sponsorTimes.views DESC`).all();
 
     let i = 0;
 
